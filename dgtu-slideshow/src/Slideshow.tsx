@@ -25,7 +25,6 @@ import {
 } from './ui';
 
 const GAP = 0.6;
-const INTRO = 9;
 const OUTRO = 3;
 
 // Длительности голосовых (сек) в порядке текста презентации.
@@ -33,7 +32,7 @@ const VOICE = [40.48, 28.92, 12.52, 16.36, 7.8, 21.32, 41.76, 28.9];
 
 const blockStarts = VOICE.reduce<number[]>(
 	(acc, d, i) => [...acc, acc[i] + d + GAP],
-	[INTRO],
+	[0],
 );
 
 export const TOTAL_SECONDS = blockStarts[VOICE.length] + OUTRO;
@@ -54,60 +53,6 @@ const fontFaces = [
 			)}) format('opentype');}`,
 	)
 	.join('');
-
-// ---------- Вступление (без озвучки) ----------
-const Intro: React.FC = () => (
-	<>
-		<Slide from={0} to={4.6} bg={C.green}>
-			<AbsoluteFill style={{justifyContent: 'center', padding: '0 160px', color: '#fff'}}>
-				<Appear at={0.2} dy={0} scale>
-					<Leaf size={110} color={C.lime} />
-				</Appear>
-				<Kicker at={0.4} color={C.lime}>
-					Проект ДГТУ
-				</Kicker>
-				<div style={{height: 30}} />
-				<Title at={0.7} size={92} color="#fff">
-					Органическое питание
-					<br />
-					для здорового потомства
-				</Title>
-				<div style={{height: 30}} />
-				<Appear at={1.4}>
-					<div style={{fontSize: 36, opacity: 0.85, fontWeight: 500}}>
-						Первичная профсоюзная организация работников ДГТУ
-					</div>
-				</Appear>
-			</AbsoluteFill>
-		</Slide>
-		<Slide from={4.6} to={INTRO}>
-			<Pad style={{display: 'flex', alignItems: 'center', gap: 100}}>
-				<div style={{flex: 1}}>
-					<Kicker at={4.7}>По данным статистики</Kicker>
-					<div style={{height: 20}} />
-					<Appear at={4.8}>
-						<div style={{fontSize: 190, fontWeight: 800, color: C.green, letterSpacing: -6}}>
-							≈<CountUp at={4.9} to={50000} dur={1.6} format={(n) => n.toLocaleString('ru-RU')} />
-						</div>
-					</Appear>
-					<Title at={5.2} size={52}>
-						обучающихся в ДГТУ
-					</Title>
-				</div>
-				<div style={{flex: 1}}>
-					<Appear at={6.2}>
-						<div style={{fontSize: 38, lineHeight: 1.4, color: C.ink, fontWeight: 500}}>
-							сталкиваются с комплексом{' '}
-							<b style={{color: C.red}}>проблем неправильного питания</b>, которые снижают
-							качество жизни и влияют на{' '}
-							<b style={{color: C.green}}>здоровье будущего потомства</b>
-						</div>
-					</Appear>
-				</div>
-			</Pad>
-		</Slide>
-	</>
-);
 
 // ---------- 1. Проблема ----------
 const V1: React.FC = () => (
@@ -701,21 +646,31 @@ const Progress: React.FC = () => {
 	);
 };
 
+// Громкость фоновой музыки относительно дубляжа (0..1).
+const MUSIC_VOLUME = 0.12;
+
 export const Slideshow: React.FC = () => {
-	const {fps} = useVideoConfig();
+	const {fps, durationInFrames} = useVideoConfig();
 	return (
 		<AbsoluteFill style={{backgroundColor: C.bg, fontFamily: FONT}}>
 			<style>{fontFaces}</style>
-			<Sequence durationInFrames={Math.round(INTRO * fps)}>
-				<Intro />
-			</Sequence>
+			<Audio src={staticFile('audio/dubbing.wav')} />
+			<Audio
+				src={staticFile('audio/music.m4a')}
+				volume={(f) =>
+					MUSIC_VOLUME *
+					interpolate(f, [0, fps, durationInFrames - 3 * fps, durationInFrames - 1], [0, 1, 1, 0], {
+						extrapolateLeft: 'clamp',
+						extrapolateRight: 'clamp',
+					})
+				}
+			/>
 			{BLOCKS.map((Block, i) => (
 				<Sequence
 					key={i}
 					from={Math.round(blockStarts[i] * fps)}
 					durationInFrames={Math.round(blockLen(i) * fps)}
 				>
-					<Audio src={staticFile(`audio/v${i + 1}.ogg`)} endAt={Math.round(VOICE[i] * fps)} />
 					<Block />
 				</Sequence>
 			))}
